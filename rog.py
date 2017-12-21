@@ -3,7 +3,7 @@ from random import randint
 import colors
 import math
 import textwrap
-#important  variables..
+#important  variables. CAPITAL so you know that they won't change.
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
 #GUI STUFF
@@ -13,8 +13,6 @@ PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
 MSG_X = BAR_WIDTH + 2
 MSG_WIDTH = SCREEN_WIDTH - BAR_WIDTH - 2
 MSG_HEIGHT = PANEL_HEIGHT - 1
-
-MAX_ROOM_ITEMS = 3
 
 MAP_WIDTH = 80
 MAP_HEIGHT = 43
@@ -29,14 +27,7 @@ TORCH_RADIUS = 10
 
 MAX_ROOM_MONSTERS = 3
 
-healtime = 0
-
 LIMIT_FPS = 20
-
-XP = 0
-MAX_XP = 100
-
-SKILLPOINTS = 0
 
 color_dark_wall = colors.darkwall
 color_dark_floor = colors.darkfloor
@@ -78,7 +69,7 @@ class Rect:
 class GameObject:
     #A generic object, could be: the player, a monster, an item, the stairs
     #always represented by an ASCII character on screen.
-    def __init__(self, x, y, char,name, color, blocks=False,fighter=None, ai=None, item=None):
+    def __init__(self, x, y, char,name, color, blocks=False,fighter=None, ai=None):
         self.x = x
         self.y = y
         self.char = char
@@ -95,25 +86,11 @@ class GameObject:
         if self.ai:
             self.ai.owner = self
 
-        self.item = item
-        if self.item: # let component know who owns it
-            self.item.owner = self
     def move(self, dx, dy):
-        global healtime
-        global TORCH_RADIUS
         #move by given amount
-        tuny = 0
         if not is_blocked(self.x + dx, self.y + dy):
             self.x += dx
             self.y += dy
-            if self == player:
-                if healtime > -1:
-                    #message(str(healtime),colors.yellow)
-                    healtime -=1
-        #else: ((IF WALKING INTO WALL))
-            #if self == player:
-            #    tuny -= 1
-            #    message(str(tuny),colors.red)
 
     def move_towards(self,target_x,target_y):
         #vector from this object to the taget and distance
@@ -152,13 +129,12 @@ class GameObject:
 
 class Fighter:
     #combat related properties
-    def __init__(self,hp,defense,power,xpgain,death_function):
+    def __init__(self,hp,defense,power,death_function):
         self.max_hp = hp
         self.hp = hp
         self.defense = defense
         self.power = power
         self.death_function = death_function
-        self.xpgain = xpgain
 
 
     def take_damage(self,damage):
@@ -195,21 +171,6 @@ class BasicMonster:
 
             elif player.fighter.hp > 0:
                 monster.fighter.attack(player)
-
-class Item:
-    #iitem that can be picked up and used
-    def __init__(self,use_function=None):
-        self.use_function = use_function
-
-    def pick_up(self):
-        #add to players inv, remove from map
-        if len(inventory) >= 26:
-            message('Your inventory is full, cannot pick up the' + self.owner.name +'!', colors.red)
-        else:
-            inventory.append(self.owner)
-            objects.remove(self.owner)
-            message('You picked up the ' + self.owner.name + '!', colors.green)
-
 
 def is_blocked(x,y):
 
@@ -324,82 +285,46 @@ def place_objects(room):
 
     for i in range(num_monsters):
         #choose random spot for monster
-        x = randint(room.x1+1, room.x2-1)
-        y = randint(room.y1+1, room.y2-1)
+        x = randint(room.x1,room.x2)
+        y = randint(room.y1,room.y2)
 
         #only place if tile is not blocked
         if not is_blocked(x,y):
-            choice = randint(0,100)
-            if choice < 40:  #40% chance of getting an orc
+            if randint(0,100) < 90:  #80% chance of getting an orc
                 #create an orc
                 ranpow = randint(3,6)
-                randen = 1
-                ranhp = 5
-                ranxp = math.floor(ranpow+randen+ranhp /2)
-                fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
+                fighter_component = Fighter(hp=5, defense=1,power=ranpow,death_function=monster_death)
                 ai_component = BasicMonster()
 
                 monster = GameObject(x,y,'o','orc',colors.orcgreen,blocks=True,
                 fighter=fighter_component, ai=ai_component)
-            elif choice < 40+15: #15% chance
+            else:
                 #create a troll
                 ranpow = randint(5,8)
                 randen = randint(1,4)
                 ranhp = randint(6,13)
-
-                ranxp = math.floor(ranpow+randen+ranhp /2)
-                fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
+                fighter_component = Fighter(hp=ranhp, defense=randen,power=ranpow,death_function=monster_death)
                 ai_component = BasicMonster()
 
                 monster = GameObject(x,y,'T','troll',colors.trollgreen,blocks=True,
                 fighter=fighter_component, ai=ai_component)
 
-            elif choice < 40+5+2: #2% chance
-                #Create a gark
-                ranhp = randint(2,4)
-                randen = randint(2,3)
-                ranpow = randint(2,6)
-                ranxp = math.floor(ranpow+randen+ranhp /2)
-                fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
-                ai_component = BasicMonster()
-
-                monster = GameObject(x,y,'G','gark',colors.goblingreen, blocks=True,
-                fighter=fighter_component, ai=ai_component)
-            else:
-                #Create a goblin
-                ranhp = randint(2,60)
-                randen = randint(0,1)
-                ranpow = randint(1,4)
-                ranxp = math.floor(ranpow+randen+ranhp /2)
-                fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
-                ai_component = BasicMonster()
-
-                monster = GameObject(x,y,'g','goblin',colors.goblingreen, blocks=True,
-                fighter=fighter_component, ai=ai_component)
-
-
             objects.append(monster)
+            #########################################
+            #CODE FOR MORE MONSTErS
+            #########################################
+            #chances: 20% monster A, 40% monster B, 10% monster C, 30% monster D:
+            #choice = randint(0, 100)
+            #if choice < 20:
+            #    #create monster A
+            #elif choice < 20+40:
+            #    #create monster B
+            #elif choice < 20+40+10:
+            #    #create monster C
+            #else:
+            #    #create monster D
 
-    num_items = randint(0, MAX_ROOM_ITEMS)
-
-    for i in range(num_items):
-        #choose random spot for this item
-        x = randint(room.x1+1, room.x2-1)
-        y = randint(room.y1+1, room.y2-1)
-
-        #dont place on blocked tile
-        if not is_blocked(x,y):
-            #create a healing potion
-            item_component = Item()
-            item = GameObject(x, y, '!', 'healing potion', colors.violet,
-                              item=item_component)
-
-            #item = GameObject(x,y,'!','healing potion',colors.violet)
-
-            objects.append(item)
-            item.send_to_back() #items appear below other objects
-
-def render_bar(x,y,total_width,name,value,maximum,bar_color,back_color,text_color):
+def render_bar(x,y,total_width,name,value,maximum,bar_color,back_color):
     #render a bar(hp,mana,etc). Fist calculate width of the bar
     bar_width = int(float(value) / maximum * total_width)
 
@@ -413,7 +338,7 @@ def render_bar(x,y,total_width,name,value,maximum,bar_color,back_color,text_colo
     #centered text with the values
     text = name + ': ' + str(value) + '/' + str(maximum)
     x_centered = x + (total_width-len(text))//2
-    panel.draw_str(x_centered,y,text,fg=text_color,bg=None)
+    panel.draw_str(x_centered,y,text,fg=colors.white,bg=None)
 
 def get_names_under_mouse():
     #return string with the names of all objects under the mouse
@@ -471,7 +396,7 @@ def render_all():
 
     if player.fighter.hp > player.fighter.max_hp:
         player.fighter.hp = player.fighter.max_hp
-
+        
     #prepare to render the GUI panel
     panel.clear(fg=colors.white, bg=colors.black)
 
@@ -482,11 +407,8 @@ def render_all():
         y += 1
 
     #show players stats
-
     render_bar(1,1,BAR_WIDTH,'HP',player.fighter.hp,player.fighter.max_hp,
-    colors.light_red,colors.darker_red,colors.white)
-
-    render_bar(1,2,BAR_WIDTH,'XP',XP,MAX_XP,colors.light_yellow,colors.darker_yellow,colors.black)
+    colors.light_red,colors.darker_red)
 
     #display names of objects under mouse
     panel.draw_str(1,0,get_names_under_mouse(), bg=None, fg=colors.light_grey)
@@ -570,24 +492,8 @@ def handle_keys():
         elif user_input.key == 'RIGHT':
             player_move_or_attack(1,0)
 
-        elif user_input.text == 'h':
-            #message('OHNO', colors.red)
-            heal()
-
-        elif user_input.text == 'g':
-            #pick up an item
-            for obj in objects: #look for an item in current tile
-                if obj.x == player.x and obj.y == player.y and obj.item:
-                    obj.item.pick_up()
         else:
             return 'turn-not-taken'
-
-def heal():
-    global healtime
-    if healtime <= 0:
-        if player.fighter.hp < player.fighter.max_hp:
-            healtime = 100
-            player.fighter.hp += 40
 
 def player_death(player):
     #the game has ended
@@ -596,29 +502,13 @@ def player_death(player):
     game_state = 'dead'
 
     player.color = colors.darker_red
-def xpfun():
-    global XP
-    global MAX_XP
-    global SKILLPOINTS
-    if XP > MAX_XP:
-        XP -= MAX_XP
-        half = MAX_XP // 2
-        MAX_XP += math.floor(half)
-        SKILLPOINTS += 1
-        message(str(SKILLPOINTS),colors.yellow)
-
-
-
 
 def monster_death(monster):
-    global XP
     #transform into corpse
-    message(monster.name.capitalize() + ' is dead! Gained '+str(monster.fighter.xpgain)+' xp', colors.amber)
+    message(monster.name.capitalize() + ' is dead!', colors.amber)
     monster.char = '%'
     monster.color = colors.darker_red
     monster.blocks = False
-    XP += monster.fighter.xpgain
-    xpfun()
     monster.fighter = None
     monster.ai = None
     monster.name = 'remains of' + monster.name
@@ -633,13 +523,13 @@ def monster_death(monster):
 tdl.set_font('arial10x10.png',greyscale=True , altLayout=True)
 
 #initilize window
-root = tdl.init(SCREEN_WIDTH, SCREEN_HEIGHT, title="Esper",fullscreen=False)
+root = tdl.init(SCREEN_WIDTH, SCREEN_HEIGHT, title="ROG",fullscreen=False)
 tdl.setFPS(LIMIT_FPS)
 con = tdl.Console(SCREEN_WIDTH,SCREEN_HEIGHT)
 panel = tdl.Console(SCREEN_WIDTH, PANEL_HEIGHT)
 
 
-fighter_component = Fighter(hp=50, defense=2, power=5,xpgain=0,death_function=player_death)
+fighter_component = Fighter(hp=50, defense=2, power=5,death_function=player_death)
 player = GameObject(SCREEN_WIDTH//2,SCREEN_HEIGHT//2,'@','player',colors.white,blocks=True,
 fighter=fighter_component)
 
@@ -652,8 +542,6 @@ fov_recompute = True
 
 game_state = 'playing'
 player_action = None
-
-inventory = []
 
 game_msgs = []
 

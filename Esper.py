@@ -36,6 +36,8 @@ LIMIT_FPS = 20
 XP = 0
 MAX_XP = 100
 
+HEAL_AMOUNT = 4
+
 SKILLPOINTS = 0
 
 INVENTORY_WIDTH = 50
@@ -186,7 +188,11 @@ class Fighter:
         else:
             message(self.owner.name.capitalize()+ ' attacks ' + target.name+ ' but it had no effect')
 
-
+    def heal(self,amount):
+        #heal given amount without going over maximum
+        self.hp += amount
+        if self.hp > self.max_hp:
+            self.hp = self.max_hp
 
 
 
@@ -216,7 +222,13 @@ class Item:
             objects.remove(self.owner)
             message('You picked up the ' + self.owner.name + '!', colors.green)
 
-
+    def use(self):
+        #call the use_function if defined
+        if self.use_function is None:
+            message('The '+self.owner.name+' cannot be used!')
+        else:
+            if self.use_function() != 'cancelled':
+                inventory.remove(self.owner) #destroy after use, unless cancelled(e.g. trying to use health potion when health is full)
 def is_blocked(x,y):
 
     if my_map[x][y].blocked:
@@ -396,7 +408,7 @@ def place_objects(room):
         #dont place on blocked tile
         if not is_blocked(x,y):
             #create a healing potion
-            item_component = Item()
+            item_component = Item(use_function=cast_heal)
             item = GameObject(x, y, '!', 'healing potion', colors.violet,
                               item=item_component)
 
@@ -571,6 +583,13 @@ def menu(header,options,width):
     if key_char == '':
         key_char = ' ' #placeholder
 
+    #convert ASCII code to an index, if it corrosponds to option, return it
+    index = ord(key_char) - ord('a')
+    if index >= 0 and index < len(options):
+        return index
+    return None
+
+
 def inventory_menu(header):
     #show menu with inventory as option
     if len(inventory) == 0:
@@ -579,6 +598,11 @@ def inventory_menu(header):
         options = [item.name for item in inventory]
 
     index = menu(header,options,INVENTORY_WIDTH)
+
+    #if an item was chosen, return it
+    if index is None or len(inventory) == 0:
+        return None
+    return inventory[index].item
 
 #Check for pressed key then change coordinates
 def handle_keys():
@@ -623,9 +647,14 @@ def handle_keys():
         elif user_input.key == 'RIGHT':
             player_move_or_attack(1,0)
 
-        elif user_input.text == 'h':
+        #######################################
+        #               OTHER KEYS            #
+        #######################################
+
+
+        #elif user_input.text == 'h':
             #message('OHNO', colors.red)
-            heal()
+            #heal()
 
         elif user_input.text == 'g':
             #pick up an item
@@ -634,18 +663,21 @@ def handle_keys():
                     obj.item.pick_up()
         elif user_input.text == 'i':
             #show inventory
-            inventory_menu('Press the key next to an item to use it, or any other to cancel. \n')
+            chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel. \n')
+            if chosen_item is not None:
+                chosen_item.use()
+
         else:
             return 'turn-not-taken'
 
-def heal():
-    global healtime
-    global HEALABL
-    if healtime <= 0:
-        if HEALABL:
-            if player.fighter.hp < player.fighter.max_hp:
-                healtime = 100
-                player.fighter.hp += player.fighter.max_hp//2
+#def heal():
+#    global healtime
+#    global HEALABL
+#    if healtime <= 0:
+    #    if HEALABL:
+        #    if player.fighter.hp < player.fighter.max_hp:
+            #    healtime = 100
+                #player.fighter.hp += player.fighter.max_hp//2
 
 def player_death(player):
     #the game has ended
@@ -681,6 +713,15 @@ def monster_death(monster):
     monster.ai = None
     monster.name = 'remains of' + monster.name
     monster.send_to_back()
+
+def cast_heal():
+    #heal the player
+    if player.fighter.hp == player.fighter.max_hp:
+        message('Your health is full!',colors.red)
+        return 'cancelled'
+
+    message('You feel stronger',colors.dark_violet)
+    player.fighter.heal(HEAL_AMOUNT)
 
 #############################################
 # Initialization & Main Loop                #

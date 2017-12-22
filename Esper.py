@@ -38,6 +38,8 @@ MAX_XP = 100
 
 SKILLPOINTS = 0
 
+INVENTORY_WIDTH = 50
+
 color_dark_wall = colors.darkwall
 color_dark_floor = colors.darkfloor
 color_light_wall = colors.lightwall
@@ -527,6 +529,53 @@ def player_move_or_attack(dx,dy):
     else:
         player.move(dx,dy)
         fov_recompute = True
+
+def menu(header,options,width):
+    if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options')
+    header_wrapped = []
+    for header_line in header.splitlines():
+        header_wrapped.extend(textwrap.wrap(header_line, width))
+
+    header_height = len(header_wrapped)
+    height = len(options) + header_height
+
+    #create an off-screen console that represents the menu's window
+    window = tdl.Console(width,height)
+
+    #print header with wrapped text
+    window.draw_rect(0,0,width,height,None,fg=colors.white,bg=None)
+    for i, line in enumerate(header_wrapped):
+        window.draw_str(0,0+i,header_wrapped[i])
+
+    y = header_height
+    letter_index = ord('a') #this returns ASCII code of "a"
+    for option_text in options:
+        text = '('+chr(letter_index) + ')  ' + option_text
+        window.draw_str(0,y,text,bg=None)
+        y += 1
+        letter_index += 1
+
+    #blit contents of window to root
+    x = SCREEN_WIDTH//2 - width//2
+    y = SCREEN_HEIGHT//2 - height//2
+    root.blit(window,x,y,width,height,0,0)
+
+    #present root and wait for key press
+    tdl.flush()
+    key = tdl.event.key_wait()
+    key_char = key.char
+    if key_char == '':
+        key_char = ' ' #placeholder
+
+def inventory_menu(header):
+    #show menu with inventory as option
+    if len(inventory) == 0:
+        options = ['Inventory is empty']
+    else:
+        options = [item.name for item in inventory]
+
+    index = menu(header,options,INVENTORY_WIDTH)
+
 #Check for pressed key then change coordinates
 def handle_keys():
     global playerx, playery
@@ -579,6 +628,9 @@ def handle_keys():
             for obj in objects: #look for an item in current tile
                 if obj.x == player.x and obj.y == player.y and obj.item:
                     obj.item.pick_up()
+        elif user_input.text == 'i':
+            #show inventory
+            inventory_menu('Press the key next to an item to use it, or any other to cancel. \n')
         else:
             return 'turn-not-taken'
 

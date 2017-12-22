@@ -45,6 +45,10 @@ color_dark_floor = colors.darkfloor
 color_light_wall = colors.lightwall
 color_light_floor = colors.lightfloor
 
+#####################################
+#ABILITIES                          #
+#####################################
+HEALABL = False
 
 class Tile:
     #A tile of the map and its properties
@@ -636,10 +640,12 @@ def handle_keys():
 
 def heal():
     global healtime
+    global HEALABL
     if healtime <= 0:
-        if player.fighter.hp < player.fighter.max_hp:
-            healtime = 100
-            player.fighter.hp += 40
+        if HEALABL:
+            if player.fighter.hp < player.fighter.max_hp:
+                healtime = 100
+                player.fighter.hp += player.fighter.max_hp//2
 
 def player_death(player):
     #the game has ended

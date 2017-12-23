@@ -304,7 +304,9 @@ def is_visible_tile(x, y):
 
 
 def make_map():
-    global my_map
+    global my_map, objects
+
+    objects = [player]
     #fill map with "blocked" tiles
     my_map = [[Tile(True) for y in range(MAP_HEIGHT)] for x in range(MAP_WIDTH)]
 
@@ -477,16 +479,6 @@ def render_bar(x,y,total_width,name,value,maximum,bar_color,back_color,text_colo
     x_centered = x + (total_width-len(text))//2
     panel.draw_str(x_centered,y,text,fg=text_color,bg=None)
 
-def get_names_under_mouse():
-    #return string with the names of all objects under the mouse
-    (x,y) = mouse_coord
-
-    #create a list with the names of all the objects at mouse coord and in FOV
-    names = [obj.name for obj in objects if obj.x == x and obj.y == y and
-    (obj.x, obj.y) in visible_tiles]
-
-    names = ', '.join(names) #join names seperated by commas
-    return names.capitalize()
 
 def render_all():
 
@@ -550,8 +542,6 @@ def render_all():
 
     render_bar(1,2,BAR_WIDTH,'XP',XP,MAX_XP,colors.light_yellow,colors.darker_yellow,colors.black)
 
-    #display names of objects under mouse
-    panel.draw_str(1,0,get_names_under_mouse(), bg=None, fg=colors.light_grey)
 
     #blit the cpmtemts of con to the root console and present it
     root.blit(con, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0)
@@ -811,11 +801,52 @@ def cast_confuse():
     monster.ai.owner = monster #tell new component who owns it
     message('The eyes of the '+monster.name+' grow cloudy', colors.light_blue)
 
+def new_game():
+    global player, inventory, game_msgs, game_state
+    #create object representing player
+    fighter_component = Fighter(hp=50, defense=2, power=5,xpgain=0,death_function=player_death)
+    player = GameObject(SCREEN_WIDTH//2,SCREEN_HEIGHT//2,'@','player',colors.white,blocks=True,fighter=fighter_component)
+
+    #generate map
+    make_map()
+
+    game_state = 'playing'
+    inventory = []
+    game_msgs = []
+
+    message('Try your best.',colors.light_sky)
+
+def play_game():
+    global fov_recompute
+
+    player_action = None
+    fov_recompute = True
+    con.clear() #unexplored areas start with black
+
+    while not tdl.event.is_window_closed():
+        #Draw all objects
+        render_all()
+
+        tdl.flush() #this presents change to the screen
+
+        #erase all objects
+        for obj in objects:
+            obj.clear()
+        #handle keys and exit game if needed
+        player_action = handle_keys()
+        if player_action == 'exit':
+            break
+
+        if game_state == 'playing' and player_action != 'turn-not-taken':
+            for obj in objects:
+                if obj.ai:
+                    obj.ai.take_turn()
+
+
 
 #############################################
 # Initialization & Main Loop                #
 #############################################
-
 
 #setting font
 tdl.set_font('arial10x10.png',greyscale=True , altLayout=True)
@@ -826,43 +857,5 @@ tdl.setFPS(LIMIT_FPS)
 con = tdl.Console(SCREEN_WIDTH,SCREEN_HEIGHT)
 panel = tdl.Console(SCREEN_WIDTH, PANEL_HEIGHT)
 
-
-fighter_component = Fighter(hp=50, defense=2, power=5,xpgain=0,death_function=player_death)
-player = GameObject(SCREEN_WIDTH//2,SCREEN_HEIGHT//2,'@','player',colors.white,blocks=True,
-fighter=fighter_component)
-
-
-objects = [player]
-
-make_map()
-
-fov_recompute = True
-
-game_state = 'playing'
-player_action = None
-
-inventory = []
-
-game_msgs = []
-
-message('Try your best.',colors.light_sky)
-mouse_coord = (0,0)
-#Main Loop
-while not tdl.event.is_window_closed():
-    #Draw all objects
-    render_all()
-
-    tdl.flush() #this presents change to the screen
-
-    #erase all objects
-    for obj in objects:
-        obj.clear()
-    #handle keys and exit game if needed
-    player_action = handle_keys()
-    if player_action == 'exit':
-        break
-
-    if game_state == 'playing' and player_action != 'turn-not-taken':
-        for obj in objects:
-            if obj.ai:
-                obj.ai.take_turn()
+new_game()
+play_game()

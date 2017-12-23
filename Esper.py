@@ -1,8 +1,11 @@
 import tdl
 from random import randint
+from tcod import image_load
 import colors
 import math
 import textwrap
+import shelve
+
 #important  variables..
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -617,6 +620,10 @@ def menu(header,options,width):
     if key_char == '':
         key_char = ' ' #placeholder
 
+    if key.key == 'ENTER' and key.alt:
+        #toggle fullscreen
+        tdl.set_fullscreen(not tdl.get_fullscreen())
+
     #convert ASCII code to an index, if it corrosponds to option, return it
     index = ord(key_char) - ord('a')
     if index >= 0 and index < len(options):
@@ -637,6 +644,9 @@ def inventory_menu(header):
     if index is None or len(inventory) == 0:
         return None
     return inventory[index].item
+
+def msgbox(text,width=50):
+    menu(text,[],width) #use menu as a message box
 
 #Check for pressed key then change coordinates
 def handle_keys():
@@ -816,6 +826,26 @@ def new_game():
 
     message('Try your best.',colors.light_sky)
 
+def save_game():
+    #open a new shelve to store game data
+    with shelve.open('savegame','n') as savefile:
+        savefile['my_map'] = my_map
+        savefile['objects'] = objects
+        savefile['player_index'] = objects.index(player)  #index of player in objects list
+        savefile['inventory'] = inventory
+        savefile['game_msgs'] = game_msgs
+        savefile['game_state'] = game_state
+
+def load_game():
+    #open saved shelf and load game data
+    with shelve.open('savegame','r') as savefile:
+        my_map = savefile['my_map']
+        objects = savefile['objects']
+        player = objects[savefile['player_index']]  #get index of player in objects list and access it
+        inventory = savefile['inventory']
+        game_msgs = savefile['game_msgs']
+        game_state = savefile['game_state']
+
 def play_game():
     global fov_recompute
 
@@ -835,6 +865,7 @@ def play_game():
         #handle keys and exit game if needed
         player_action = handle_keys()
         if player_action == 'exit':
+            save_game()
             break
 
         if game_state == 'playing' and player_action != 'turn-not-taken':
@@ -842,6 +873,38 @@ def play_game():
                 if obj.ai:
                     obj.ai.take_turn()
 
+def main_menu():
+    img = image_load('background.png')
+
+    while not tdl.event.is_window_closed():
+        #show background image at twice regular console resolution
+        img.blit_2x(root,0,0)
+
+        #show games title and credits
+        title = 'THIS GAME HAS NO NAME YET'
+        center = (SCREEN_WIDTH - len(title)) //2
+        root.draw_str(center, SCREEN_HEIGHT//2-6,title,bg=None,fg=colors.light_red)
+
+        title = 'By Mahdarah'
+        center = (SCREEN_WIDTH - len(title)) //2
+        root.draw_str(center, SCREEN_HEIGHT//2-4,title,bg=None,fg=colors.light_red)
+
+        #show options and wait for players choice
+        choice = menu('',['New game','Continue game','Quit'],24)
+
+        if choice == 0: #new game
+            new_game()
+            play_game()
+        elif choice == 1: #load game
+            try:
+                load_game()
+            except:
+                msgbox('\n No saved game to load.\n', 24)
+                continue
+            play_game()
+
+        elif choice == 2: #quit
+            break
 
 
 #############################################
@@ -857,5 +920,4 @@ tdl.setFPS(LIMIT_FPS)
 con = tdl.Console(SCREEN_WIDTH,SCREEN_HEIGHT)
 panel = tdl.Console(SCREEN_WIDTH, PANEL_HEIGHT)
 
-new_game()
-play_game()
+main_menu()

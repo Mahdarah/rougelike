@@ -3,7 +3,9 @@ from random import randint
 import colors
 import math
 import textwrap
-import Map
+from Map import Tile
+from Map import Rect
+from GameObject.GameObject import GameObject
 #important  variables..
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -53,154 +55,10 @@ color_light_floor = colors.lightfloor
 #ABILITIES                          #
 #####################################
 HEALABL = False
-Tile = Map.Tile;
-Rect = Map.Rect;
-class GameObject:
-    #A generic object, could be: the player, a monster, an item, the stairs
-    #always represented by an ASCII character on screen.
-    def __init__(self, x, y, char,name, color, blocks=False,fighter=None, ai=None, item=None):
-        self.x = x
-        self.y = y
-        self.char = char
-        self.color = color
-        self.name = name
-        self.blocks = blocks
-        self.fighter = fighter
-
-
-        if self.fighter:
-            self.fighter.owner = self
-
-        self.ai = ai
-        if self.ai:
-            self.ai.owner = self
-
-        self.item = item
-        if self.item: # let component know who owns it
-            self.item.owner = self
-    def move(self, dx, dy):
-        global healtime
-        global TORCH_RADIUS
-        #move by given amount
-        tuny = 0
-        if not is_blocked(self.x + dx, self.y + dy):
-            self.x += dx
-            self.y += dy
-            if self == player:
-                if healtime > -1:
-                    #message(str(healtime),colors.yellow)
-                    healtime -=1
-        #else: ((IF WALKING INTO WALL))
-            #if self == player:
-            #    tuny -= 1
-            #    message(str(tuny),colors.red)
-
-    def move_towards(self,target_x,target_y):
-        #vector from this object to the taget and distance
-        dx = target_x - self.x
-        dy = target_y - self.y
-        distance = math.sqrt(dx ** 2 + dy ** 2)
-
-        #normalize it to length 1(preserving direction ), then round it and
-        #convert it to integer, so movement is restricted to map grid
-        dx = int(round(dx / distance))
-        dy = int(round(dy / distance))
-        self.move(dx,dy)
-
-    def distance_to(self, other):
-        #return the distance to another object
-        dx = other.x - self.x
-        dy = other.y - self.y
-        return math.sqrt(dx ** 2 + dy ** 2)
-
-    def send_to_back(self):
-        #make this drawn first, so all others are drawn over it
-        global objects
-        objects.remove(self)
-        objects.insert(0,self)
-
-    def draw(self):
-        global visible_tiles
-        #only show if visible to player
-        if (self.x, self.y) in visible_tiles:
-            #Draw the ASCII character that represents this object at its position
-            con.draw_char(self.x, self.y, self.char, self.color, bg=None)
-
-    def clear(self):
-        #erase ASCII character that represents this object
-        con.draw_char(self.x, self.y, ' ', self.color, bg=None)
-
-class Fighter:
-    #combat related properties
-    def __init__(self,hp,defense,power,xpgain,death_function):
-        self.max_hp = hp
-        self.hp = hp
-        self.defense = defense
-        self.power = power
-        self.death_function = death_function
-        self.xpgain = xpgain
-
-
-    def take_damage(self,damage):
-        if damage > 0:
-            self.hp -= damage
-
-        if self.hp <= 0:
-            function = self.death_function
-            if function is not None:
-                function(self.owner)
-
-    def attack(self, target):
-        #simple formula for attack damage
-        damage = self.power - target.fighter.defense
-
-        if damage > 0:
-            message(self.owner.name.capitalize() + ' attacks ' + target.name+ ' for '+str(damage), colors.lighter_han)
-            target.fighter.take_damage(damage)
-        else:
-            message(self.owner.name.capitalize()+ ' attacks ' + target.name+ ' but it had no effect')
-
-    def heal(self,amount):
-        #heal given amount without going over maximum
-        self.hp += amount
-        if self.hp > self.max_hp:
-            self.hp = self.max_hp
 
 
 
-class BasicMonster:
-    #AI for a basic monster
-    def take_turn(self):
-        monster = self.owner
-        if (monster.x, monster.y) in visible_tiles:
-
-            if monster.distance_to(player) >=2:
-                monster.move_towards(player.x,player.y)
-
-            elif player.fighter.hp > 0:
-                monster.fighter.attack(player)
-
-class Item:
-    #iitem that can be picked up and used
-    def __init__(self,use_function=None):
-        self.use_function = use_function
-
-    def pick_up(self):
-        #add to players inv, remove from map
-        if len(inventory) >= 26:
-            message('Your inventory is full, cannot pick up the' + self.owner.name +'!', colors.red)
-        else:
-            inventory.append(self.owner)
-            objects.remove(self.owner)
-            message('You picked up the ' + self.owner.name + '!', colors.green)
-
-    def use(self):
-        #call the use_function if defined
-        if self.use_function is None:
-            message('The '+self.owner.name+' cannot be used!')
-        else:
-            if self.use_function() != 'cancelled':
-                inventory.remove(self.owner) #destroy after use, unless cancelled(e.g. trying to use health potion when health is full)
+#these are dungeon generation
 def is_blocked(x,y):
 
     if my_map[x][y].blocked:

@@ -43,6 +43,8 @@ SKILLPOINTS = 0
 #Spell values!
 LIGHTNING_RANGE = 5
 LIGHTNING_DAMAGE = 20
+CONFUSE_NUM_TURNS = randint(8,15)
+CONFUSE_RANGE = 8
 
 INVENTORY_WIDTH = 50
 
@@ -212,6 +214,22 @@ class BasicMonster:
             elif player.fighter.hp > 0:
                 monster.fighter.attack(player)
 
+class ConfusedMonster:
+    #AI for a confused monster
+    def __init__(self,old_ai,num_turns=CONFUSE_NUM_TURNS):
+        self.old_ai = old_ai
+        self.num_turns = num_turns
+
+    def take_turn(self):
+        if self.num_turns > 0: #if still confused
+            #move in random direction & decrease amount of turns confused
+            self.owner.move(randint(-1,1),randint(-1,1))
+            self.num_turns -= 1
+
+        else: #restore previous AI
+            self.owner.ai = self.old_ai
+            message('The '+ self.owner.name + ' is no longer confused!', colors.orange)
+
 class Item:
     #iitem that can be picked up and used
     def __init__(self,use_function=None):
@@ -224,7 +242,15 @@ class Item:
         else:
             inventory.append(self.owner)
             objects.remove(self.owner)
-            message('You picked up the ' + self.owner.name + '!', colors.green)
+            message('You picked up the ' + self.owner.name + '!', colors.light_purple)
+
+    def drop(self):
+         #add to the map and remove from the player's inventory. also, place it at the player's coordinates
+        objects.append(self.owner)
+        inventory.remove(self.owner)
+        self.owner.x = player.x
+        self.owner.y = player.y
+        message('You dropped a ' + self.owner.name + '.', colors.yellow)
 
     def use(self):
         #call the use_function if defined
@@ -418,6 +444,12 @@ def place_objects(room):
                 item_component = Item(use_function=cast_heal)
                 item = GameObject(x, y, '!', 'healing potion', colors.violet,
                                   item=item_component)
+
+            elif dice < 70+10:
+                #create a confusion scroll 10% chance
+                item_component = Item(use_function=cast_confuse)
+
+                item = GameObject(x,y,'#','scroll of confusion',colors.light_yellow,item=item_component)
             else:
                 #create a lightning scroll
                 item_component = Item(use_function = cast_lightning)
@@ -675,9 +707,15 @@ def handle_keys():
                     obj.item.pick_up()
         elif user_input.text == 'i':
             #show inventory
-            chosen_item = inventory_menu('Press the key next to an item to use it, or any other to cancel. \n')
+            chosen_item = inventory_menu('\nPress the key next to an item to use it, or any other to cancel. \n')
             if chosen_item is not None:
                 chosen_item.use()
+
+        elif user_input.text == 'd':
+            #show inventory, if item selected, drop it
+            chosen_item = inventory_menu('\nPress the key next to an item to drop it, or any other to cancel. \n')
+            if chosen_item is not None:
+                chosen_item.drop()
 
         else:
             return 'turn-not-taken'
@@ -760,6 +798,19 @@ def cast_lightning():
     #ZAPPPP
     message('A lightning bolt strikes the '+monster.name+' with a loud crash! ' +str(LIGHTNING_DAMAGE) + ' damage was delt.', colors.light_blue)
     monster.fighter.take_damage(LIGHTNING_DAMAGE)
+
+def cast_confuse():
+    #find closest monster and make it confused
+    monster = closest_monster(CONFUSE_RANGE)
+    if monster is None: #no enemy in max range
+        message('No enemy is close enough', colors.red)
+        return 'cancelled'
+
+    old_ai = monster.ai
+    monster.ai = ConfusedMonster(old_ai)
+    monster.ai.owner = monster #tell new component who owns it
+    message('The eyes of the '+monster.name+' grow cloudy', colors.light_blue)
+
 
 #############################################
 # Initialization & Main Loop                #

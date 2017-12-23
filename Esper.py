@@ -40,6 +40,10 @@ HEAL_AMOUNT = 4
 
 SKILLPOINTS = 0
 
+#Spell values!
+LIGHTNING_RANGE = 5
+LIGHTNING_DAMAGE = 20
+
 INVENTORY_WIDTH = 50
 
 color_dark_wall = colors.darkwall
@@ -353,7 +357,7 @@ def place_objects(room):
                 ranpow = randint(3,6)
                 randen = 1
                 ranhp = 5
-                ranxp = math.floor(ranpow+randen+ranhp /2)
+                ranxp = math.floor(ranpow+randen+(ranhp/2) /2)
                 fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
                 ai_component = BasicMonster()
 
@@ -365,7 +369,7 @@ def place_objects(room):
                 randen = randint(1,4)
                 ranhp = randint(6,13)
 
-                ranxp = math.floor(ranpow+randen+ranhp /2)
+                ranxp = math.floor(ranpow+randen+(ranhp/2) /2)
                 fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
                 ai_component = BasicMonster()
 
@@ -377,7 +381,7 @@ def place_objects(room):
                 ranhp = randint(2,4)
                 randen = randint(2,3)
                 ranpow = randint(2,6)
-                ranxp = math.floor(ranpow+randen+ranhp /2)
+                ranxp = math.floor(ranpow+randen+(ranhp/2) /2)
                 fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
                 ai_component = BasicMonster()
 
@@ -388,7 +392,7 @@ def place_objects(room):
                 ranhp = randint(2,60)
                 randen = randint(0,1)
                 ranpow = randint(1,4)
-                ranxp = math.floor(ranpow+randen+ranhp /2)
+                ranxp = math.floor(ranpow+randen+(ranhp/2) /2)
                 fighter_component = Fighter(hp=5, defense=1,power=ranpow,xpgain=ranxp,death_function=monster_death)
                 ai_component = BasicMonster()
 
@@ -407,12 +411,20 @@ def place_objects(room):
 
         #dont place on blocked tile
         if not is_blocked(x,y):
-            #create a healing potion
-            item_component = Item(use_function=cast_heal)
-            item = GameObject(x, y, '!', 'healing potion', colors.violet,
-                              item=item_component)
+            dice = randint(0,100)
 
-            #item = GameObject(x,y,'!','healing potion',colors.violet)
+            if dice < 70:
+                #create a healing potion
+                item_component = Item(use_function=cast_heal)
+                item = GameObject(x, y, '!', 'healing potion', colors.violet,
+                                  item=item_component)
+            else:
+                #create a lightning scroll
+                item_component = Item(use_function = cast_lightning)
+
+                item = GameObject(x,y,"#",'scroll of lightning bolt',colors.light_yellow, item=item_component)
+
+
 
             objects.append(item)
             item.send_to_back() #items appear below other objects
@@ -714,6 +726,21 @@ def monster_death(monster):
     monster.name = 'remains of' + monster.name
     monster.send_to_back()
 
+def closest_monster(max_range):
+    #find closest enemy in range and in players FOV
+    closest_enemy = None
+    closest_dist = max_range + 1 #start with slightly more than max range
+
+    for obj in objects:
+        if obj.fighter and not obj == player and (obj.x,obj.y) in visible_tiles:
+            #calculate distance between this object and player
+            dist = player.distance_to(obj)
+            if dist < closest_dist: #its closer so remember it
+                closest_enemy = obj
+                closest_dist = dist
+
+    return closest_enemy
+
 def cast_heal():
     #heal the player
     if player.fighter.hp == player.fighter.max_hp:
@@ -722,6 +749,17 @@ def cast_heal():
 
     message('You feel stronger',colors.dark_violet)
     player.fighter.heal(HEAL_AMOUNT)
+
+def cast_lightning():
+    #find closest enemy in range and do damage to it
+    monster = closest_monster(LIGHTNING_RANGE)
+    if monster is None:
+        message('No enemy is close enough', colors.red)
+        return 'cancelled'
+
+    #ZAPPPP
+    message('A lightning bolt strikes the '+monster.name+' with a loud crash! ' +str(LIGHTNING_DAMAGE) + ' damage was delt.', colors.light_blue)
+    monster.fighter.take_damage(LIGHTNING_DAMAGE)
 
 #############################################
 # Initialization & Main Loop                #

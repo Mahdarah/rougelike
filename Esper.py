@@ -21,7 +21,7 @@ MAX_ROOM_ITEMS = 3
 
 MAP_WIDTH = 80
 MAP_HEIGHT = 43
-
+#this is a comment
 ROOM_MAX_SIZE = 30 #defualt for tutorial was 10 and 6
 ROOM_MIN_SIZE = 2
 MAX_ROOMS = 80

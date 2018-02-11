@@ -6,7 +6,10 @@ lightfloor=(170, 150, 102)
 orcgreen=(65, 97, 106)
 trollgreen=(31, 65, 74)
 goblingreen=(204,255,0)
-
+xpamber = (255, 180, 0)
+darker_xpamber=(167, 86, 0)
+hpcolor=(218, 114, 151)
+greentext=(12, 35, 71)
 # grey levels
 black=(0,0,0)
 darkest_grey=(31,31,31)

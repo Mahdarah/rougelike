@@ -51,6 +51,13 @@ CONFUSE_RANGE = 8
 
 INVENTORY_WIDTH = 50
 
+horizontalstart = []
+horizontalend = []
+verticalstart = []
+verticalend = []
+
+STAIRAMOUNT = 1
+
 color_dark_wall = colors.darkwall
 color_dark_floor = colors.darkfloor
 color_light_wall = colors.lightwall
@@ -90,7 +97,6 @@ class Rect:
         #returns true if this rectangle intersects with another
         return (self.x1 <= other.x2 and self.x2 >= other.x1 and
                 self.y1 <= other.y2 and self.y2 >= other.y1)
-
 
 class GameObject:
     #A generic object, could be: the player, a monster, an item, the stairs
@@ -192,7 +198,7 @@ class Fighter:
         damage = self.power - target.fighter.defense
 
         if damage > 0:
-            message(self.owner.name.capitalize() + ' attacks ' + target.name+ ' for '+str(damage), colors.lighter_han)
+            message(self.owner.name.capitalize() + ' attacks ' + target.name+ ' for '+str(damage), target.color )#colors.lighter_han)
             target.fighter.take_damage(damage)
         else:
             message(self.owner.name.capitalize()+ ' attacks ' + target.name+ ' but it had no effect')
@@ -280,16 +286,25 @@ def create_room(room):
             my_map[x][y].block_sight = False
 
 def create_h_tunnel(x1, x2, y):
+    horizontalstart.append(x1)
+    horizontalend.append(x2)
     global my_map
     for x in range(min(x1, x2), max(x1, x2) + 1):
         my_map[x][y].blocked = False
         my_map[x][y].block_sight = False
+    return horizontalstart
+    return horizontalend
+
 
 def create_v_tunnel(y1, y2, x):
+    verticalstart.append(y1)
+    verticalend.append(y2)
     global my_map
     for y in range(min(y1, y2), max(y1, y2) + 1):
         my_map[x][y].blocked = False
         my_map[x][y].block_sight = False
+    return verticalstart
+    return verticalend
 
 def is_visible_tile(x, y):
     global my_map
@@ -307,7 +322,7 @@ def is_visible_tile(x, y):
 
 
 def make_map():
-    global my_map, objects
+    global my_map, objects, horizontalstart, horizontalend
 
     objects = [player]
     #fill map with "blocked" tiles
@@ -315,6 +330,7 @@ def make_map():
 
     rooms = []
     num_rooms = 0
+
 
     for r in range(MAX_ROOMS):
         #random width and height
@@ -354,6 +370,7 @@ def make_map():
                 #center coords of prev. room
                 (prev_x, prev_y) = rooms[num_rooms-1].center()
 
+
                 #coin flip!
                 if randint(0,1):
                     #move horizontally first
@@ -365,8 +382,28 @@ def make_map():
                     create_h_tunnel(prev_x,new_x,new_y)
 
             #add contets to room, such as monsters
-            place_objects(new_room)
-
+            #hallway or room?
+            if randint(0,100) <= 75:
+                place_objects(new_room)
+            else:
+                if horizontalstart:
+                    randomstart = randint(0,len(horizontalstart)-1)
+                    print(horizontalstart)
+                    #print("howdy"+str(randomstart))
+                    if horizontalend:
+                        print(horizontalend)
+                        if horizontalstart[randomstart] < horizontalend[randomstart]:
+                            #print("TeSTING 1")
+                            randomhspot = randint(horizontalstart[randomstart],horizontalend[randomstart])
+                        else:
+                            #print("ISITONLYNOW?")
+                            randomhspot = randint(horizontalend[randomstart],horizontalstart[randomstart])
+                    else:
+                        make_map()
+                else:
+                    make_map()
+                #newhtunnel =
+                place_objects(new_room)
             #append the new room to list
             rooms.append(new_room)
             num_rooms += 1
@@ -432,8 +469,10 @@ def place_objects(room):
 
 
             objects.append(monster)
-
-    num_items = randint(0, MAX_ROOM_ITEMS)
+    global STAIRAMOUNT
+    important_amount = STAIRAMOUNT #+ other importants
+    num_items = randint(important_amount, MAX_ROOM_ITEMS)
+    #print(num_items)
 
     for i in range(num_items):
         #choose random spot for this item
@@ -442,29 +481,36 @@ def place_objects(room):
 
         #dont place on blocked tile
         if not is_blocked(x,y):
-            dice = randint(0,100)
+            if important_amount > 0:
+                if not is_visible_tile(x,y):
+                    important = GameObject(x,y,'>',"Down stairs",colors.red)
+                    important_amount -= 1
 
-            if dice < 70:
-                #create a healing potion
-                item_component = Item(use_function=cast_heal)
-                item = GameObject(x, y, '!', 'healing potion', colors.violet,
-                                  item=item_component)
-
-            elif dice < 70+10:
-                #create a confusion scroll 10% chance
-                item_component = Item(use_function=cast_confuse)
-
-                item = GameObject(x,y,'#','scroll of confusion',colors.light_yellow,item=item_component)
+                    objects.append(important)
             else:
-                #create a lightning scroll
-                item_component = Item(use_function = cast_lightning)
+                dice = randint(0,100)
 
-                item = GameObject(x,y,"#",'scroll of lightning bolt',colors.light_yellow, item=item_component)
+                if dice < 70:
+                    #create a healing potion
+                    item_component = Item(use_function=cast_heal)
+                    item = GameObject(x, y, '!', 'healing potion', colors.violet,
+                                      item=item_component)
+
+                elif dice < 70+10:
+                    #create a confusion scroll 10% chance
+                    item_component = Item(use_function=cast_confuse)
+
+                    item = GameObject(x,y,'#','scroll of confusion',colors.light_yellow,item=item_component)
+                else:
+                    #create a lightning scroll
+                    item_component = Item(use_function = cast_lightning)
+
+                    item = GameObject(x,y,"#",'scroll of lightning bolt',colors.light_yellow, item=item_component)
 
 
 
-            objects.append(item)
-            item.send_to_back() #items appear below other objects
+                objects.append(item)
+                item.send_to_back() #items appear below other objects
 
 def render_bar(x,y,total_width,name,value,maximum,bar_color,back_color,text_color):
     #render a bar(hp,mana,etc). Fist calculate width of the bar
@@ -541,9 +587,9 @@ def render_all():
     #show players stats
 
     render_bar(1,1,BAR_WIDTH,'HP',player.fighter.hp,player.fighter.max_hp,
-    colors.light_red,colors.darker_red,colors.white)
+    colors.hpcolor,colors.darker_red,colors.black)
 
-    render_bar(1,2,BAR_WIDTH,'XP',XP,MAX_XP,colors.light_yellow,colors.darker_yellow,colors.black)
+    render_bar(1,2,BAR_WIDTH,'XP',XP,MAX_XP,colors.xpamber,colors.darker_xpamber,colors.black)
 
 
     #blit the cpmtemts of con to the root console and present it
@@ -753,7 +799,7 @@ def xpfun():
 def monster_death(monster):
     global XP
     #transform into corpse
-    message(monster.name.capitalize() + ' is dead! Gained '+str(monster.fighter.xpgain)+' xp', colors.amber)
+    message(monster.name.capitalize() + ' is dead! Gained '+str(monster.fighter.xpgain)+' xp', colors.xpamber)
     monster.char = '%'
     monster.color = colors.darker_red
     monster.blocks = False
@@ -812,9 +858,9 @@ def cast_confuse():
     message('The eyes of the '+monster.name+' grow cloudy', colors.light_blue)
 
 def new_game():
-    global player, inventory, game_msgs, game_state
+    global player, inventory, game_msgs, game_state, horizontally
     #create object representing player
-    fighter_component = Fighter(hp=50, defense=2, power=5,xpgain=0,death_function=player_death)
+    fighter_component = Fighter(hp=100, defense=2, power=5,xpgain=0,death_function=player_death)
     player = GameObject(SCREEN_WIDTH//2,SCREEN_HEIGHT//2,'@','player',colors.white,blocks=True,fighter=fighter_component)
 
     #generate map
@@ -823,6 +869,10 @@ def new_game():
     game_state = 'playing'
     inventory = []
     game_msgs = []
+    horizontalstart = []
+    horizontalend = []
+    verticalstart = []
+    verticalend = []
 
     message('Try your best.',colors.light_sky)
 

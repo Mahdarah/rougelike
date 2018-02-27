@@ -56,8 +56,6 @@ horizontalend = []
 verticalstart = []
 verticalend = []
 
-STAIRAMOUNT = 1
-
 color_dark_wall = colors.darkwall
 color_dark_floor = colors.darkfloor
 color_light_wall = colors.lightwall
@@ -322,13 +320,18 @@ def is_visible_tile(x, y):
 
 
 def make_map():
-    global my_map, objects, horizontalstart, horizontalend
+    global my_map, objects, horizontalstart, horizontalend, num_rooms, rooms, DOWNSTAIR, mandatory_list, mandatory_number
+    DOWNSTAIR = 1
+
+    mandatory_list = [DOWNSTAIR]
+    mandatory_number = sum(mandatory_list)
 
     objects = [player]
     #fill map with "blocked" tiles
     my_map = [[Tile(True) for y in range(MAP_HEIGHT)] for x in range(MAP_WIDTH)]
 
     rooms = []
+    #print(rooms)
     num_rooms = 0
 
 
@@ -408,7 +411,10 @@ def make_map():
             rooms.append(new_room)
             num_rooms += 1
 
+skipme = 1
 def place_objects(room):
+    global num_rooms, rooms, DOWNSTAIR
+
     #choose random number of monsters
     num_monsters = randint(0, MAX_ROOM_MONSTERS)
 
@@ -469,48 +475,75 @@ def place_objects(room):
 
 
             objects.append(monster)
-    global STAIRAMOUNT
-    important_amount = STAIRAMOUNT #+ other importants
-    num_items = randint(important_amount, MAX_ROOM_ITEMS)
-    #print(num_items)
+    ########################
+    #END MONSTER START ITEM#
+    ########################
+
+    num_items = randint(0,MAX_ROOM_ITEMS)
 
     for i in range(num_items):
-        #choose random spot for this item
+            #choose random spot for this item
         x = randint(room.x1+1, room.x2-1)
         y = randint(room.y1+1, room.y2-1)
 
-        #dont place on blocked tile
-        if not is_blocked(x,y):
-            if important_amount > 0:
-                if not is_visible_tile(x,y):
-                    important = GameObject(x,y,'>',"Down stairs",colors.red)
-                    important_amount -= 1
+        dice = randint(0,100)
 
-                    objects.append(important)
-            else:
-                dice = randint(0,100)
+        if dice < 70:
+                        #create a healing potion
+                        item_component = Item(use_function=cast_heal)
+                        item = GameObject(x, y, '!', 'healing potion', colors.violet,
+                                          item=item_component)
 
-                if dice < 70:
-                    #create a healing potion
-                    item_component = Item(use_function=cast_heal)
-                    item = GameObject(x, y, '!', 'healing potion', colors.violet,
-                                      item=item_component)
+        elif dice < 70+10:
+                        #create a confusion scroll 10% chance
+                        item_component = Item(use_function=cast_confuse)
 
-                elif dice < 70+10:
-                    #create a confusion scroll 10% chance
-                    item_component = Item(use_function=cast_confuse)
+                        item = GameObject(x,y,'#','scroll of confusion',colors.light_yellow,item=item_component)
+        else:
+                        #create a lightning scroll
+                        item_component = Item(use_function = cast_lightning)
 
-                    item = GameObject(x,y,'#','scroll of confusion',colors.light_yellow,item=item_component)
-                else:
-                    #create a lightning scroll
-                    item_component = Item(use_function = cast_lightning)
-
-                    item = GameObject(x,y,"#",'scroll of lightning bolt',colors.light_yellow, item=item_component)
+                        item = GameObject(x,y,"#",'scroll of lightning bolt',colors.light_yellow, item=item_component)
 
 
 
-                objects.append(item)
-                item.send_to_back() #items appear below other objects
+        objects.append(item)
+        item.send_to_back() #items appear below other objects
+
+
+    for i in range(mandatory_number):
+        global skipme
+        #print(mandatory_number)
+        if skipme == 0:
+        #    print("HOLLY")
+            if num_rooms > 2:
+            #    print("LOPUYEAH")
+                #print(num_rooms)
+                #print(rooms)
+                roomtarget = rooms[randint(0+1,num_rooms-1)]
+                x = randint(roomtarget.x1+1, roomtarget.x2-1)
+                y = randint(roomtarget.y1+1, roomtarget.y2-1)
+
+                dice = randint(0,mandatory_number)
+
+                if dice == 1:
+                    if DOWNSTAIR > 0:
+                        mandatory = GameObject(x,y,">","Down stairs",colors.red)
+                        DOWNSTAIR -= 1
+                        objects.append(mandatory)
+                        print("STARES PLACFED")
+                        #print(x)
+                        #print(y)
+                    else:
+                        print("XGUNNAGIVEITTOYA")
+                        dice += 1
+
+
+        else:
+            skipme -= 1
+            print(skipme)
+
+
 
 def render_bar(x,y,total_width,name,value,maximum,bar_color,back_color,text_color):
     #render a bar(hp,mana,etc). Fist calculate width of the bar
@@ -858,7 +891,7 @@ def cast_confuse():
     message('The eyes of the '+monster.name+' grow cloudy', colors.light_blue)
 
 def new_game():
-    global player, inventory, game_msgs, game_state, horizontally
+    global player, inventory, game_msgs, game_state
     #create object representing player
     fighter_component = Fighter(hp=100, defense=2, power=5,xpgain=0,death_function=player_death)
     player = GameObject(SCREEN_WIDTH//2,SCREEN_HEIGHT//2,'@','player',colors.white,blocks=True,fighter=fighter_component)
@@ -867,12 +900,13 @@ def new_game():
     make_map()
 
     game_state = 'playing'
+
     inventory = []
     game_msgs = []
-    horizontalstart = []
-    horizontalend = []
-    verticalstart = []
-    verticalend = []
+    del horizontalstart[:]
+    del horizontalend[:]
+    del verticalstart[:]
+    del verticalend[:]
 
     message('Try your best.',colors.light_sky)
 

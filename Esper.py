@@ -531,11 +531,11 @@ def place_objects(room):
                         mandatory = GameObject(x,y,">","Down stairs",colors.red)
                         DOWNSTAIR -= 1
                         objects.append(mandatory)
-                        print("STARES PLACFED")
+                        #print("STARES PLACFED")
                         #print(x)
                         #print(y)
                     else:
-                        print("XGUNNAGIVEITTOYA")
+                        #print("XGUNNAGIVEITTOYA")
                         dice += 1
 
 

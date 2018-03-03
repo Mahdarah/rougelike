@@ -320,8 +320,7 @@ def is_visible_tile(x, y):
 
 
 def make_map():
-    global my_map, objects, horizontalstart, horizontalend, num_rooms, rooms, DOWNSTAIR
-    DOWNSTAIR = 1
+    global my_map, objects, horizontalstart, horizontalend, num_rooms, rooms, stairs
 
 
     objects = [player]
@@ -409,7 +408,7 @@ def make_map():
             rooms.append(new_room)
             num_rooms += 1
   #create stairs at the center of the last room
-    stairs = GameObject(new_x, new_y, '<', 'stairs', colors.red)
+    stairs = GameObject(new_x, new_y, '>', 'stairs', colors.red)
     objects.append(stairs)
     stairs.send_to_back()  #so it's drawn below the monsters
 
@@ -764,6 +763,11 @@ def handle_keys():
             if chosen_item is not None:
                 chosen_item.drop()
 
+        elif user_input.text == '>':
+            #go down stairs if player is on them
+            if stairs.x == player.x and stairs.y == player.y:
+                next_level()
+
         else:
             return 'turn-not-taken'
 
@@ -858,6 +862,17 @@ def cast_confuse():
     monster.ai.owner = monster #tell new component who owns it
     message('The eyes of the '+monster.name+' grow cloudy', colors.light_blue)
 
+def next_level():
+    #go to next level
+    global dungeon_level, fov_recompute, con
+    message('You feel a sense of triumph as you prepare yourself to decend the stairs', colors.blue)
+    player.fighter.heal(player.fighter.max_hp/2) #heal player 50%
+
+    make_map()
+    fov_recompute = True
+    render_all()
+    con.clear()
+    tdl.flush()
 def new_game():
     global player, inventory, game_msgs, game_state
     #create object representing player

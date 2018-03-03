@@ -320,11 +320,9 @@ def is_visible_tile(x, y):
 
 
 def make_map():
-    global my_map, objects, horizontalstart, horizontalend, num_rooms, rooms, DOWNSTAIR, mandatory_list, mandatory_number
+    global my_map, objects, horizontalstart, horizontalend, num_rooms, rooms, DOWNSTAIR
     DOWNSTAIR = 1
 
-    mandatory_list = [DOWNSTAIR]
-    mandatory_number = sum(mandatory_list)
 
     objects = [player]
     #fill map with "blocked" tiles
@@ -410,6 +408,10 @@ def make_map():
             #append the new room to list
             rooms.append(new_room)
             num_rooms += 1
+  #create stairs at the center of the last room
+    stairs = GameObject(new_x, new_y, '<', 'stairs', colors.red)
+    objects.append(stairs)
+    stairs.send_to_back()  #so it's drawn below the monsters
 
 skipme = 1
 def place_objects(room):
@@ -509,40 +511,6 @@ def place_objects(room):
 
         objects.append(item)
         item.send_to_back() #items appear below other objects
-
-
-    for i in range(mandatory_number):
-        global skipme
-        #print(mandatory_number)
-        if skipme == 0:
-        #    print("HOLLY")
-            if num_rooms > 2:
-            #    print("LOPUYEAH")
-                #print(num_rooms)
-                #print(rooms)
-                roomtarget = rooms[randint(0+1,num_rooms-1)]
-                x = randint(roomtarget.x1+1, roomtarget.x2-1)
-                y = randint(roomtarget.y1+1, roomtarget.y2-1)
-
-                dice = randint(0,mandatory_number)
-
-                if dice == 1:
-                    if DOWNSTAIR > 0:
-                        mandatory = GameObject(x,y,">","Down stairs",colors.red)
-                        DOWNSTAIR -= 1
-                        objects.append(mandatory)
-                        #print("STARES PLACFED")
-                        #print(x)
-                        #print(y)
-                    else:
-                        #print("XGUNNAGIVEITTOYA")
-                        dice += 1
-
-
-        else:
-            skipme -= 1
-            print(skipme)
-
 
 
 def render_bar(x,y,total_width,name,value,maximum,bar_color,back_color,text_color):
